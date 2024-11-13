@@ -1,4 +1,19 @@
-Day 1
+# Build instructions
+
+- For windows you need to download and install visual studio and CMake.
+- For Linux you need to install CMake and GCC or Clang.
+
+```
+https://github.com/ahmed-abdelhay/bvh.git
+cd bvh
+mkdir build
+cmake ..
+cmake --build .
+```
+
+# Plan 
+
+## Day 1
 
 - Goals.
 - Introduction to the field of geometry processing.
@@ -14,7 +29,7 @@ Day 1
   - Different formats.
   - Loading binary STL files.
 
-Day 2
+## Day 2
 
 - Ray/Triangle intersection implementation.
 - Brute force implementation of inside/outside classification.
@@ -22,7 +37,7 @@ Day 2
 - Why we need acceleration structures?
 - Initial BVH implementation.
 
-Day 3
+## Day 3
 
 - BVH construction benchmark.
 - Array based implementation.
@@ -30,6 +45,6 @@ Day 3
 - CPU parallel implementation.
 - GPU parallel implementation (CUDA?).
 
-Day 4
+## Day 4
 
 - LBVH paper.
