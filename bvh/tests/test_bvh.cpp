@@ -23,3 +23,28 @@ TEST_CASE("Import STL") {
   REQUIRE(result.faces.size() == 1280);
   REQUIRE(result.vertices.size() == 642);
 }
+
+TEST_CASE("Inside/outside classification") {
+  const std::string fn = DATA_DIR + std::string("/sphere.stl");
+  TriangleMesh mesh;
+  bool success = ReadSTL(fn, mesh);
+  REQUIRE(success);
+  const BBox box = ComputeBBox(mesh.vertices);
+  constexpr size_t test_count = 10000;
+  const std::vector<Vec3> test_points = GenerateRandomPoints(box, test_count);
+  // WriteXYZ(test_points, DATA_DIR + std::string("/sphere_test_points.xyz"));
+  REQUIRE(test_points.size() == test_count);
+  const std::vector<uint8_t> result = TestInsideOutside(mesh, test_points);
+  REQUIRE(result.size() == test_count);
+
+  {
+    std::vector<Vec3> inside_points;
+    for (size_t i = 0; i < test_count; i++) {
+      if (result[i]) {
+        inside_points.push_back(test_points[i]);
+      }
+    }
+    WriteXYZ(inside_points,
+             DATA_DIR + std::string("/inside_sphere_test_points.xyz"));
+  }
+}

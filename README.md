@@ -7,6 +7,7 @@
 https://github.com/ahmed-abdelhay/bvh.git
 cd bvh
 mkdir build
+cd build
 cmake ..
 cmake --build .
 ```
