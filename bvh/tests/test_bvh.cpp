@@ -34,13 +34,26 @@ TEST_CASE("Inside/outside classification") {
   const std::vector<Vec3> test_points = GenerateRandomPoints(box, test_count);
   // WriteXYZ(test_points, DATA_DIR + std::string("/sphere_test_points.xyz"));
   REQUIRE(test_points.size() == test_count);
-  const std::vector<uint8_t> result = TestInsideOutside(mesh, test_points);
-  REQUIRE(result.size() == test_count);
+
+  const std::vector<uint8_t> result0 = TestInsideOutside(mesh, test_points);
+  const std::vector<uint8_t> result1 = TestInsideOutsideUsingBVH(mesh, test_points);
+
+  //BENCHMARK("Benchmark for Brute force of in/out classification")
+  //{
+  //    const std::vector<uint8_t> result = TestInsideOutside(mesh, test_points);
+  //};
+  //BENCHMARK("Benchmark for BVH of in/out classification")
+  //{
+  //    const std::vector<uint8_t> result = TestInsideOutsideUsingBVH(mesh, test_points);
+  //};
+
+  REQUIRE(result0.size() == test_count);
+  REQUIRE(result1.size() == test_count);
 
   {
     std::vector<Vec3> inside_points;
     for (size_t i = 0; i < test_count; i++) {
-      if (result[i]) {
+      if (result0[i]) {
         inside_points.push_back(test_points[i]);
       }
     }

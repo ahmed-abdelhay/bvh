@@ -10,6 +10,9 @@ namespace fast_bvh {
 
 struct Vec3 {
   float x = 0, y = 0, z = 0;
+
+  float operator[](size_t i) const { return i == 0 ? x : i == 1 ? y : z; }
+  float &operator[](size_t i) { return i == 0 ? x : i == 1 ? y : z; }
 };
 
 inline Vec3 operator+(const Vec3 &a, const Vec3 &b) {
@@ -72,6 +75,8 @@ struct BBox {
   }
 };
 
+Vec3 BBoxSize(const BBox &box);
+
 struct Ray {
   Vec3 origin;
   Vec3 direction;
@@ -86,5 +91,9 @@ std::optional<Vec3> CheckRayTriangleIntersection(const Vec3 &ta, const Vec3 &tb,
 std::vector<Vec3> GenerateRandomPoints(const BBox &box, size_t count);
 std::vector<uint8_t> TestInsideOutside(const TriangleMesh &mesh,
                                        std::span<const Vec3> test_points);
+
+std::vector<uint8_t>
+TestInsideOutsideUsingBVH(const TriangleMesh &mesh,
+                          std::span<const Vec3> test_points);
 
 } // namespace fast_bvh

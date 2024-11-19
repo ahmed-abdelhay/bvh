@@ -203,7 +203,8 @@ std::vector<uint8_t> TestInsideOutside(const TriangleMesh &mesh,
 
   std::vector<uint8_t> result(test_count);
 
-  for (size_t i = 0; i < test_count; i++) {
+#pragma omp parallel for
+  for (int64_t i = 0; i < test_count; i++) {
     const Vec3 &test_point = test_points[i];
 
     Ray ray;
@@ -221,6 +222,147 @@ std::vector<uint8_t> TestInsideOutside(const TriangleMesh &mesh,
         intersection_count++;
       }
     }
+    result[i] = intersection_count % 2;
+  }
+
+  return result;
+}
+
+Vec3 BBoxSize(const BBox &box) { return box.max - box.min; }
+
+Vec3 ComputeTriangleCenter(const Vec3 &a, const Vec3 &b, const Vec3 &c) {
+  return (a + b + c) * (1. / 3.);
+}
+
+struct BVH {
+  struct Node {
+    BBox box;
+    int child0 = -1;
+    int child1 = -1;
+    int face_id = -1;
+  };
+
+  std::vector<Node> nodes;
+};
+
+BVH BuildBVH(const TriangleMesh &mesh) {
+
+  struct Stack {
+    int parent_node = -1;
+    bool is_child0 = false;
+    BBox box;
+    std::vector<int> face_ids;
+  };
+  BVH result;
+
+  const BBox mesh_box = ComputeBBox(mesh.vertices);
+  std::vector<int> face_ids(mesh.faces.size());
+  for (size_t i = 0; i < mesh.faces.size(); i++) {
+    face_ids[i] = i;
+  }
+
+  std::vector<Stack> stack{Stack{-1, false, mesh_box, face_ids}};
+  while (!stack.empty()) {
+    const Stack top = stack.back();
+    stack.pop_back();
+
+    const int node_id = result.nodes.size();
+    if (top.parent_node >= 0) {
+      if (top.is_child0) {
+        result.nodes[top.parent_node].child0 = node_id;
+      } else {
+        result.nodes[top.parent_node].child1 = node_id;
+      }
+    }
+
+    if (top.face_ids.size() == 1) {
+      BVH::Node node;
+      node.box = top.box;
+      node.face_id = top.face_ids[0];
+      if (top.parent_node >= 0) {
+        if (top.is_child0) {
+          result.nodes[top.parent_node].child0 = node_id;
+        } else {
+          result.nodes[top.parent_node].child1 = node_id;
+        }
+      }
+      result.nodes.push_back(node);
+    } else {
+      const Vec3 box_size = BBoxSize(top.box);
+      const size_t split_dir =
+          (box_size.x > box_size.y && box_size.x > box_size.z)   ? 0
+          : (box_size.y > box_size.x && box_size.y > box_size.z) ? 1
+                                                                 : 2;
+      const float split_point =
+          (top.box.min[split_dir] + top.box.max[split_dir]) * 0.5;
+
+      Stack left, right;
+      for (int face_id : top.face_ids) {
+        const Triangle &face = mesh.faces[face_id];
+        const Vec3 triangle_center =
+            ComputeTriangleCenter(mesh.vertices[face.a], mesh.vertices[face.b],
+                                  mesh.vertices[face.c]);
+        if (triangle_center[split_dir] < split_point) {
+          left.face_ids.push_back(face_id);
+        } else {
+          right.face_ids.push_back(face_id);
+        }
+      }
+
+      const int parent_node_id = node_id;
+      BVH::Node internal_node;
+      internal_node.box = top.box;
+      result.nodes.push_back(internal_node);
+
+      if (!left.face_ids.empty()) {
+        left.is_child0 = true;
+        left.parent_node = parent_node_id;
+        for (int face_id : left.face_ids) {
+          const Triangle &face = mesh.faces[face_id];
+          left.box.Add(mesh.vertices[face.a]);
+          left.box.Add(mesh.vertices[face.b]);
+          left.box.Add(mesh.vertices[face.c]);
+        }
+        stack.push_back(left);
+      }
+      if (!right.face_ids.empty()) {
+        right.is_child0 = false;
+        right.parent_node = parent_node_id;
+        for (int face_id : right.face_ids) {
+          const Triangle &face = mesh.faces[face_id];
+          right.box.Add(mesh.vertices[face.a]);
+          right.box.Add(mesh.vertices[face.b]);
+          right.box.Add(mesh.vertices[face.c]);
+        }
+        stack.push_back(right);
+      }
+    }
+  }
+
+  return result;
+}
+
+size_t BVHRayIntersection(const BVH &tree, Ray ray) { return 0; }
+
+std::vector<uint8_t>
+TestInsideOutsideUsingBVH(const TriangleMesh &mesh,
+                          std::span<const Vec3> test_points) {
+  const size_t test_count = test_points.size();
+  const size_t triangle_count = mesh.faces.size();
+
+  const BVH tree = BuildBVH(mesh);
+
+  std::vector<uint8_t> result(test_count);
+
+#pragma omp parallel for
+  for (int64_t i = 0; i < test_count; i++) {
+    const Vec3 &test_point = test_points[i];
+
+    Ray ray;
+    ray.origin = test_point;
+    ray.direction = Vec3{1, 0, 0};
+
+    const size_t intersection_count = BVHRayIntersection(tree, ray);
     result[i] = intersection_count % 2;
   }
 
